@@ -4,6 +4,8 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -11,6 +13,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Popup
 import kotlinx.coroutines.Dispatchers
@@ -64,6 +69,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     fun MainAppScreen() {
         var selectedTabIndex by remember { mutableIntStateOf(0) }
@@ -71,43 +77,65 @@ class MainActivity : ComponentActivity() {
         
         val tabs = listOf("Styles", "Ringtones", "Notifications")
 
-        Scaffold(
-            modifier = Modifier.fillMaxSize(),
-            topBar = {
-                Column {
-                    Spacer(modifier = Modifier.height(32.dp)) // basic edge-to-edge spacer
-                    TabRow(selectedTabIndex = selectedTabIndex) {
-                        tabs.forEachIndexed { index, title ->
-                            Tab(
-                                selected = selectedTabIndex == index,
-                                onClick = { selectedTabIndex = index },
-                                text = { Text(title) }
-                            )
+        Box(modifier = Modifier.fillMaxSize()) {
+            // 1. Background Image Layer
+            Image(
+                painter = painterResource(id = R.drawable.piano_sheetmusic_background),
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
+            )
+
+            // 2. Translucent Gloss Layer
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.White.copy(alpha = 0.2f))
+            )
+
+            // 3. App Content Layer
+            Scaffold(
+                modifier = Modifier.fillMaxSize(),
+                containerColor = Color.Transparent,
+                topBar = {
+                    Column {
+                        Spacer(modifier = Modifier.height(32.dp)) // basic edge-to-edge spacer
+                        PrimaryTabRow(
+                            selectedTabIndex = selectedTabIndex,
+                            containerColor = Color.Transparent
+                        ) {
+                            tabs.forEachIndexed { index, title ->
+                                Tab(
+                                    selected = selectedTabIndex == index,
+                                    onClick = { selectedTabIndex = index },
+                                    text = { Text(title) }
+                                )
+                            }
                         }
                     }
                 }
-            }
-        ) { innerPadding ->
-            Column(
-                modifier = Modifier
-                    .padding(innerPadding)
-                    .fillMaxSize()
-            ) {
-                when (selectedTabIndex) {
-                    0 -> StylesScreen(
-                        onStyleSelected = { style ->
-                            selectedStyle = style
-                            selectedTabIndex = 1 // Auto-navigate to Ringtones
-                        }
-                    )
-                    1 -> RingtonesScreen(
-                        selectedStyle = selectedStyle,
-                        onBackToStyles = { selectedTabIndex = 0 }
-                    )
-                    2 -> NotificationsScreen(
-                        selectedStyle = selectedStyle,
-                        onBackToStyles = { selectedTabIndex = 0 }
-                    )
+            ) { innerPadding ->
+                Column(
+                    modifier = Modifier
+                        .padding(innerPadding)
+                        .fillMaxSize()
+                ) {
+                    when (selectedTabIndex) {
+                        0 -> StylesScreen(
+                            onStyleSelected = { style ->
+                                selectedStyle = style
+                                selectedTabIndex = 1 // Auto-navigate to Ringtones
+                            }
+                        )
+                        1 -> RingtonesScreen(
+                            selectedStyle = selectedStyle,
+                            onBackToStyles = { selectedTabIndex = 0 }
+                        )
+                        2 -> NotificationsScreen(
+                            selectedStyle = selectedStyle,
+                            onBackToStyles = { selectedTabIndex = 0 }
+                        )
+                    }
                 }
             }
         }
