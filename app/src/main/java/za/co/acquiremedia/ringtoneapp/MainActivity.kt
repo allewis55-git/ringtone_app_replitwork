@@ -26,14 +26,20 @@ import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
+import java.net.URLEncoder
 import za.co.acquiremedia.ringtoneapp.ui.theme.RingtoneAppTheme
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 
 class MainActivity : ComponentActivity() {
 
+    data class Ringtone(val name: String, val filename: String)
+
     private val stylesUrl =
         "https://www.hilton-chiropractor.co.za/nZ3PrYY7/php-admin/api/styles_request.php"
+
+    private val ringtonesUrl =
+        "https://www.hilton-chiropractor.co.za/nZ3PrYY7/php-admin/api/ringtones_request.php"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -66,6 +72,39 @@ class MainActivity : ComponentActivity() {
 
             List(stylesJson.length()) { index ->
                 stylesJson.getString(index)
+            }
+
+        } catch (e: Exception) {
+            e.printStackTrace()
+            emptyList()
+        }
+    }
+
+    private fun loadRingtones(style: String): List<Ringtone> {
+        return try {
+            val encodedStyle = URLEncoder.encode(style, "UTF-8")
+            val urlWithParams = "$ringtonesUrl?style=$encodedStyle"
+            val connection = URL(urlWithParams).openConnection() as HttpURLConnection
+
+            connection.requestMethod = "GET"
+            connection.connectTimeout = 10_000
+            connection.readTimeout = 10_000
+
+            val response = connection.inputStream
+                .bufferedReader()
+                .use { it.readText() }
+
+            connection.disconnect()
+
+            val json = JSONObject(response)
+            val ringtonesJson = json.getJSONArray("ringtones")
+
+            List(ringtonesJson.length()) { index ->
+                val item = ringtonesJson.getJSONObject(index)
+                Ringtone(
+                    name = item.getString("name"),
+                    filename = item.getString("filename")
+                )
             }
 
         } catch (e: Exception) {
@@ -265,6 +304,18 @@ class MainActivity : ComponentActivity() {
 
     @Composable
     fun RingtonesScreen(selectedStyle: String, onBackToStyles: () -> Unit) {
+        var ringtones by remember { mutableStateOf<List<Ringtone>?>(null) }
+        var selectedRingtone by remember { mutableStateOf<Ringtone?>(null) }
+        var expanded by remember { mutableStateOf(false) }
+
+        LaunchedEffect(selectedStyle) {
+            if (selectedStyle.isNotEmpty()) {
+                ringtones = withContext(Dispatchers.IO) {
+                    loadRingtones(selectedStyle)
+                }
+            }
+        }
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -277,7 +328,6 @@ class MainActivity : ComponentActivity() {
                 fontFamily = FontFamily(
                     Font(R.font.alice_regular)
                 ),
-             /*           color = Color(0xFF030304).copy(alpha = 0.6f),  */
                 modifier = Modifier.padding(bottom = 8.dp)
             )
 
@@ -286,32 +336,72 @@ class MainActivity : ComponentActivity() {
             } else {
                 Text("Selected Style: $selectedStyle")
                 
-                // Placeholder for Ringtone Selector
-                Surface(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f)
-                        .padding(vertical = 16.dp),
-                    color = MaterialTheme.colorScheme.surfaceVariant
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
-                    ) {
-                        Text("Ringtone list placeholder")
+                Spacer(modifier = Modifier.height(16.dp))
+
+                when {
+                    ringtones == null -> {
+                        CircularProgressIndicator()
+                        Text("Loading ringtones...", modifier = Modifier.padding(top = 16.dp))
+                    }
+                    ringtones!!.isEmpty() -> {
+                        Text("No ringtones found for this style.")
+                    }
+                    else -> {
+                        OutlinedButton(
+                            onClick = { expanded = true },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(selectedRingtone?.name ?: "Choose a ringtone")
+                        }
+
+                        if (expanded) {
+                            Popup(
+                                alignment = Alignment.TopCenter,
+                                onDismissRequest = { expanded = false }
+                            ) {
+                                Surface(
+                                    modifier = Modifier
+                                        .width(280.dp)
+                                        .heightIn(max = 400.dp),
+                                    color = Color(0xFFF4F4F7),
+                                    tonalElevation = 4.dp,
+                                    shadowElevation = 4.dp
+                                ) {
+                                    LazyColumn {
+                                        items(ringtones!!) { ringtone ->
+                                            DropdownMenuItem(
+                                                text = { Text(ringtone.name) },
+                                                onClick = {
+                                                    selectedRingtone = ringtone
+                                                    expanded = false
+                                                }
+                                            )
+                                            HorizontalDivider(
+                                                color = Color(0xFFD8D8DE),
+                                                thickness = 1.dp
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
 
+                Spacer(modifier = Modifier.weight(1f))
+
                 Button(
                     onClick = { /* TODO: Play */ },
-                    modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                    enabled = selectedRingtone != null
                 ) {
                     Text("Play")
                 }
 
                 Button(
                     onClick = { /* TODO: Install */ },
-                    modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+                    enabled = selectedRingtone != null
                 ) {
                     Text("Install")
                 }
