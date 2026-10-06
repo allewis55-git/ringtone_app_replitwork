@@ -1,11 +1,13 @@
 package za.co.acquiremedia.ringtoneapp
 
+
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -17,6 +19,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Popup
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -24,6 +27,8 @@ import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
 import za.co.acquiremedia.ringtoneapp.ui.theme.RingtoneAppTheme
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
 
 class MainActivity : ComponentActivity() {
 
@@ -95,20 +100,40 @@ class MainActivity : ComponentActivity() {
 
             // 3. App Content Layer
             Scaffold(
-                modifier = Modifier.fillMaxSize(),
-                containerColor = Color.Transparent,
+                modifier = Modifier.fillMaxSize()
+                    .padding(   start = 20.dp,
+                        end = 20.dp,
+                        top = 20.dp,
+                        bottom = 56.dp)
+                    .border(
+                        width = 1.dp,
+                        color = Color(0xFFffede6).copy(alpha = 0.7f)
+                    ),
+                containerColor = Color.White.copy(alpha = 0.65f),
+
+
+             /*   containerColor = Color.Transparent,   */
                 topBar = {
                     Column {
                         Spacer(modifier = Modifier.height(32.dp)) // basic edge-to-edge spacer
                         PrimaryTabRow(
                             selectedTabIndex = selectedTabIndex,
-                            containerColor = Color.Transparent
+                            containerColor = Color.White.copy(alpha = 0.40f)
+                          /*  containerColor = Color.Transparent   */
                         ) {
                             tabs.forEachIndexed { index, title ->
                                 Tab(
                                     selected = selectedTabIndex == index,
                                     onClick = { selectedTabIndex = index },
-                                    text = { Text(title) }
+                                    text = {
+                                        Text(
+                                            text = title,
+                                            fontSize = 14.sp,
+                                            color = Color(0xFF030304).copy(alpha = 0.6f)
+                                        )
+                                    }
+
+                                  /*  text = { Text(title) }   */
                                 )
                             }
                         }
@@ -144,7 +169,8 @@ class MainActivity : ComponentActivity() {
     @Composable
     fun StylesScreen(onStyleSelected: (String) -> Unit) {
         var styles by remember { mutableStateOf<List<String>?>(null) }
-        var expanded by remember { mutableStateOf(false) }
+        var expanded by remember { mutableStateOf(true) }
+      /*  var expanded by remember { mutableStateOf(false) }   */
         var selectedLocalStyle by remember { mutableStateOf("") }
 
         LaunchedEffect(Unit) {
@@ -162,11 +188,15 @@ class MainActivity : ComponentActivity() {
             Text(
                 text = "Styles",
                 style = MaterialTheme.typography.headlineLarge,
+                fontFamily = FontFamily(
+                    Font(R.font.alice_regular)
+                ),
                 modifier = Modifier.padding(bottom = 8.dp)
             )
 
             Text(
                 text = "Choose a style from the menu",
+                fontSize = 19.sp,
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.padding(bottom = 24.dp)
             )
@@ -179,10 +209,11 @@ class MainActivity : ComponentActivity() {
                 styles!!.isEmpty() -> {
                     Text("Could not load styles.")
                 }
-                else -> {
+                else ->  {
+                    /*  {
                     Button(onClick = { expanded = true }) {
                         Text(if (selectedLocalStyle.isEmpty()) "Choose a style" else selectedLocalStyle)
-                    }
+                    }  remove button */
 
                     if (expanded) {
                         Popup(
@@ -191,10 +222,12 @@ class MainActivity : ComponentActivity() {
                         ) {
                             Surface(
                                 modifier = Modifier
+                                    .padding(top = 95.dp)
                                     .width(280.dp)
                                     .heightIn(max = 400.dp),
+                                color = Color(0xFFF4F4F7),
                                 tonalElevation = 4.dp,
-                                shadowElevation = 8.dp
+                                shadowElevation = 4.dp
                             ) {
                                 LazyColumn {
                                     items(styles!!) { style ->
@@ -205,6 +238,11 @@ class MainActivity : ComponentActivity() {
                                                 expanded = false
                                                 onStyleSelected(style)
                                             }
+                                        )
+
+                                        HorizontalDivider(
+                                            color = Color(0xFFD8D8DE),
+                                            thickness = 1.dp
                                         )
                                     }
                                 }
@@ -236,6 +274,10 @@ class MainActivity : ComponentActivity() {
             Text(
                 text = "Ringtones",
                 style = MaterialTheme.typography.headlineLarge,
+                fontFamily = FontFamily(
+                    Font(R.font.alice_regular)
+                ),
+             /*           color = Color(0xFF030304).copy(alpha = 0.6f),  */
                 modifier = Modifier.padding(bottom = 8.dp)
             )
 
@@ -292,6 +334,10 @@ class MainActivity : ComponentActivity() {
             Text(
                 text = "Notifications",
                 style = MaterialTheme.typography.headlineLarge,
+                fontSize = 18.sp,
+                fontFamily = FontFamily(
+                    Font(R.font.alice_regular)
+                ),
                 modifier = Modifier.padding(bottom = 8.dp)
             )
 
