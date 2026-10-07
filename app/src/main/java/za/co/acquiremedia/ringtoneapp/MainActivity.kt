@@ -1,7 +1,9 @@
 package za.co.acquiremedia.ringtoneapp
 
 
+import android.media.MediaPlayer
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -20,6 +22,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -314,11 +317,21 @@ class MainActivity : ComponentActivity() {
 
     @Composable
     fun RingtonesScreen(selectedStyle: String, onBackToStyles: () -> Unit) {
+        val context = LocalContext.current
         var ringtones by remember { mutableStateOf<List<Ringtone>?>(null) }
         var selectedRingtone by remember { mutableStateOf<Ringtone?>(null) }
+        var mediaPlayer by remember { mutableStateOf<MediaPlayer?>(null) }
 
         var expanded by remember { mutableStateOf(true) }
-      /*  var expanded by remember { mutableStateOf(false) }   */
+
+        // Cleanup MediaPlayer when leaving composition
+        DisposableEffect(Unit) {
+            onDispose {
+                mediaPlayer?.stop()
+                mediaPlayer?.release()
+                mediaPlayer = null
+            }
+        }
 
         LaunchedEffect(selectedStyle) {
             if (selectedStyle.isNotEmpty()) {
@@ -386,7 +399,35 @@ class MainActivity : ComponentActivity() {
                                                 text = { Text(ringtone.name) },
                                                 onClick = {
                                                     selectedRingtone = ringtone
-                                                    expanded = false
+
+                                                /*    expanded = false  */
+
+                                                    // Handle Playback
+                                                    try {
+                                                        mediaPlayer?.stop()
+                                                        mediaPlayer?.release()
+                                                        mediaPlayer = null
+
+                                                        val audioUrl = "https://www.hilton-chiropractor.co.za/nZ3PrYY7/php-admin/uploads/ringtones/${ringtone.filename}"
+                                                        mediaPlayer = MediaPlayer().apply {
+                                                            setDataSource(audioUrl)
+                                                            setOnPreparedListener { start() }
+                                                            setOnCompletionListener {
+                                                                it.release()
+                                                                if (mediaPlayer == it) mediaPlayer = null
+                                                            }
+                                                            setOnErrorListener { mp, _, _ ->
+                                                                Toast.makeText(context, "Unable to play ringtone", Toast.LENGTH_SHORT).show()
+                                                                mp.release()
+                                                                if (mediaPlayer == mp) mediaPlayer = null
+                                                                true
+                                                            }
+                                                            prepareAsync()
+                                                        }
+                                                    } catch (e: Exception) {
+                                                        e.printStackTrace()
+                                                        Toast.makeText(context, "Unable to play ringtone", Toast.LENGTH_SHORT).show()
+                                                    }
                                                 }
                                             )
                                             HorizontalDivider(
