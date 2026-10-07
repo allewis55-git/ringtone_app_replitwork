@@ -5,12 +5,15 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -30,6 +33,11 @@ import java.net.URLEncoder
 import za.co.acquiremedia.ringtoneapp.ui.theme.RingtoneAppTheme
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
+
 
 class MainActivity : ComponentActivity() {
 
@@ -306,7 +314,9 @@ class MainActivity : ComponentActivity() {
     fun RingtonesScreen(selectedStyle: String, onBackToStyles: () -> Unit) {
         var ringtones by remember { mutableStateOf<List<Ringtone>?>(null) }
         var selectedRingtone by remember { mutableStateOf<Ringtone?>(null) }
-        var expanded by remember { mutableStateOf(false) }
+
+        var expanded by remember { mutableStateOf(true) }
+      /*  var expanded by remember { mutableStateOf(false) }   */
 
         LaunchedEffect(selectedStyle) {
             if (selectedStyle.isNotEmpty()) {
@@ -347,13 +357,13 @@ class MainActivity : ComponentActivity() {
                         Text("No ringtones found for this style.")
                     }
                     else -> {
-                        OutlinedButton(
+                       /* OutlinedButton(
                             onClick = { expanded = true },
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Text(selectedRingtone?.name ?: "Choose a ringtone")
                         }
-
+                        */
                         if (expanded) {
                             Popup(
                                 alignment = Alignment.TopCenter,
@@ -361,6 +371,7 @@ class MainActivity : ComponentActivity() {
                             ) {
                                 Surface(
                                     modifier = Modifier
+                                        .padding(top = 95.dp)
                                         .width(280.dp)
                                         .heightIn(max = 400.dp),
                                     color = Color(0xFFF4F4F7),
@@ -390,13 +401,72 @@ class MainActivity : ComponentActivity() {
 
                 Spacer(modifier = Modifier.weight(1f))
 
+
+
+
+                OutlinedButton(
+                    onClick = { /* TODO: Restore functionality */ },
+                    modifier = Modifier
+                        .width(180.dp)
+                        .height(42.dp)
+                        /* .height(52.dp)  */
+                        .shadow(
+                            elevation = 3.dp,
+                            shape = RoundedCornerShape(20.dp),
+                            ambientColor = Color(0xFFFFB9A3),
+                            spotColor = Color(0xFFFFB9A3)
+                        ),
+                    border = BorderStroke(
+                        width = 1.dp,
+                        color = Color(0xFFFF8559)
+                    ),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        containerColor = Color(0xFFFFE5DC),
+                        contentColor = Color(0xFF4E4E6B)
+                    )
+                ) {
+                    Text(
+                        text = "Play",
+                        fontSize = 22.sp,
+                        color = Color(0xFFcf3700),
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.sp
+                    )
+                }
+
+
+/*
                 Button(
                     onClick = { /* TODO: Play */ },
-                    modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
-                    enabled = selectedRingtone != null
+                    modifier = Modifier
+                    .width(180.dp)
+                    .height(52.dp),
+               /*     modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),   */
+                    enabled = selectedRingtone != null,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFFFF8559),
+                        contentColor = Color.White
+                    ),
+                    shape = RoundedCornerShape(14.dp),
+                    border = BorderStroke(
+                        width = 1.dp,
+                        color = Color.White.copy(alpha = 0.8f),
+                    )
                 ) {
-                    Text("Play")
+                    Text(
+                        text = "Play",
+                        fontSize = 19.sp,
+                        color = Color(0xFF4e4e6b),
+                        fontFamily = FontFamily(
+                            Font(R.font.alice_regular),
+                        ),
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 0.5.sp,
+
+                    )
                 }
+*/
+
 
                 Button(
                     onClick = { /* TODO: Install */ },
@@ -404,7 +474,10 @@ class MainActivity : ComponentActivity() {
                     enabled = selectedRingtone != null
                 ) {
                     Text("Install")
-                }
+
+               }
+
+
             }
 
             TextButton(onClick = onBackToStyles) {
