@@ -37,6 +37,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 
 
 class MainActivity : ComponentActivity() {
@@ -401,83 +403,60 @@ class MainActivity : ComponentActivity() {
 
                 Spacer(modifier = Modifier.weight(1f))
 
-
-
-
                 OutlinedButton(
-                    onClick = { /* TODO: Restore functionality */ },
+                    onClick = { /* TODO: Install */ },
                     modifier = Modifier
-                        .width(180.dp)
-                        .height(42.dp)
-                        /* .height(52.dp)  */
+                        .width(280.dp)
+                        .heightIn(min = 68.dp)
+                        .padding(bottom = 16.dp)
                         .shadow(
                             elevation = 3.dp,
                             shape = RoundedCornerShape(20.dp),
                             ambientColor = Color(0xFFFFB9A3),
                             spotColor = Color(0xFFFFB9A3)
                         ),
+                    enabled = selectedRingtone != null,
                     border = BorderStroke(
                         width = 1.dp,
                         color = Color(0xFFFF8559)
                     ),
+                    shape = RoundedCornerShape(20.dp),
                     colors = ButtonDefaults.outlinedButtonColors(
                         containerColor = Color(0xFFFFE5DC),
+                        disabledContainerColor = Color(0xFFFFE5DC).copy(alpha = 0.5f),
                         contentColor = Color(0xFF4E4E6B)
                     )
                 ) {
-                    Text(
-                        text = "Play",
-                        fontSize = 22.sp,
-                        color = Color(0xFFcf3700),
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.sp
-                    )
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        if (selectedRingtone != null) {
+                            Text(
+                                text = "Install",
+                                fontSize = 16.sp,
+                                color = Color(0xFFcf3700),
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 1.sp
+                            )
+                            Text(
+                                text = selectedRingtone!!.name,
+                                fontSize = 18.sp,
+                                color = Color(0xFF4E4E6B),
+                                textAlign = TextAlign.Center,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        } else {
+                            Text(
+                                text = "Select a ringtone",
+                                fontSize = 18.sp,
+                                color = Color(0xFFcf3700).copy(alpha = 0.6f),
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
                 }
-
-
-/*
-                Button(
-                    onClick = { /* TODO: Play */ },
-                    modifier = Modifier
-                    .width(180.dp)
-                    .height(52.dp),
-               /*     modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),   */
-                    enabled = selectedRingtone != null,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFFFF8559),
-                        contentColor = Color.White
-                    ),
-                    shape = RoundedCornerShape(14.dp),
-                    border = BorderStroke(
-                        width = 1.dp,
-                        color = Color.White.copy(alpha = 0.8f),
-                    )
-                ) {
-                    Text(
-                        text = "Play",
-                        fontSize = 19.sp,
-                        color = Color(0xFF4e4e6b),
-                        fontFamily = FontFamily(
-                            Font(R.font.alice_regular),
-                        ),
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 0.5.sp,
-
-                    )
-                }
-*/
-
-
-                Button(
-                    onClick = { /* TODO: Install */ },
-                    modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
-                    enabled = selectedRingtone != null
-                ) {
-                    Text("Install")
-
-               }
-
-
             }
 
             TextButton(onClick = onBackToStyles) {
