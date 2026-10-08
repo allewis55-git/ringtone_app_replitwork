@@ -654,6 +654,7 @@ class MainActivity : ComponentActivity() {
     @Composable
     fun NotificationsScreen(selectedStyle: String, onBackToStyles: () -> Unit) {
         val context = LocalContext.current
+        val scope = rememberCoroutineScope()
         var notifications by remember { mutableStateOf<List<Notification>?>(null) }
         var selectedNotification by remember { mutableStateOf<Notification?>(null) }
         var mediaPlayer by remember { mutableStateOf<MediaPlayer?>(null) }
@@ -703,11 +704,16 @@ class MainActivity : ComponentActivity() {
                 when {
                     notifications == null -> {
                         CircularProgressIndicator()
-                        Text("Loading notifications...", modifier = Modifier.padding(top = 16.dp))
+                        Text(
+                            "Loading notifications...",
+                            modifier = Modifier.padding(top = 16.dp)
+                        )
                     }
+
                     notifications!!.isEmpty() -> {
                         Text("No notifications found for this style.")
                     }
+
                     else -> {
                         if (expanded) {
                             Popup(
@@ -729,7 +735,7 @@ class MainActivity : ComponentActivity() {
                                                 text = { Text(notification.name) },
                                                 onClick = {
                                                     selectedNotification = notification
-                                                    // expanded = false // Keep open as requested
+                                                    // Keep dropdown open as requested
 
                                                     // Handle Playback
                                                     try {
@@ -737,28 +743,53 @@ class MainActivity : ComponentActivity() {
                                                         mediaPlayer?.release()
                                                         mediaPlayer = null
 
-                                                        val audioUrl = "https://www.hilton-chiropractor.co.za/nZ3PrYY7/php-admin/uploads/notifications/${notification.filename}"
+                                                        val audioUrl =
+                                                            "https://www.hilton-chiropractor.co.za/nZ3PrYY7/php-admin/uploads/notifications/${notification.filename}"
+
                                                         mediaPlayer = MediaPlayer().apply {
                                                             setDataSource(audioUrl)
-                                                            setOnPreparedListener { start() }
+
+                                                            setOnPreparedListener {
+                                                                start()
+                                                            }
+
                                                             setOnCompletionListener {
                                                                 it.release()
-                                                                if (mediaPlayer == it) mediaPlayer = null
+                                                                if (mediaPlayer == it) {
+                                                                    mediaPlayer = null
+                                                                }
                                                             }
+
                                                             setOnErrorListener { mp, _, _ ->
-                                                                Toast.makeText(context, "Unable to play notification", Toast.LENGTH_SHORT).show()
+                                                                Toast.makeText(
+                                                                    context,
+                                                                    "Unable to play notification",
+                                                                    Toast.LENGTH_SHORT
+                                                                ).show()
+
                                                                 mp.release()
-                                                                if (mediaPlayer == mp) mediaPlayer = null
+
+                                                                if (mediaPlayer == mp) {
+                                                                    mediaPlayer = null
+                                                                }
+
                                                                 true
                                                             }
+
                                                             prepareAsync()
                                                         }
                                                     } catch (e: Exception) {
                                                         e.printStackTrace()
-                                                        Toast.makeText(context, "Unable to play notification", Toast.LENGTH_SHORT).show()
+
+                                                        Toast.makeText(
+                                                            context,
+                                                            "Unable to play notification",
+                                                            Toast.LENGTH_SHORT
+                                                        ).show()
                                                     }
                                                 }
                                             )
+
                                             HorizontalDivider(
                                                 color = Color(0xFFD8D8DE),
                                                 thickness = 1.dp
@@ -774,15 +805,49 @@ class MainActivity : ComponentActivity() {
                 Spacer(modifier = Modifier.weight(1f))
 
                 Button(
-                    onClick = { /* TODO: Play */ },
-                    modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
-                ) {
-                    Text("Play")
-                }
+                    onClick = {
+                        selectedNotification?.let { notification ->
+                            if (!Settings.System.canWrite(context)) {
+                                val intent = Intent(
+                                    Settings.ACTION_MANAGE_WRITE_SETTINGS
+                                ).apply {
+                                    data = Uri.parse("package:${context.packageName}")
+                                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                }
 
-                Button(
-                    onClick = { /* TODO: Install */ },
-                    modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
+                                context.startActivity(intent)
+
+                                Toast.makeText(
+                                    context,
+                                    "Please allow 'Modify system settings' and try again",
+                                    Toast.LENGTH_LONG
+                                ).show()
+                            } else {
+                                scope.launch {
+                                    val success = withContext(Dispatchers.IO) {
+                                        installNotification(context, notification)
+                                    }
+
+                                    if (success) {
+                                        Toast.makeText(
+                                            context,
+                                            "✓ Notification installed",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                    } else {
+                                        Toast.makeText(
+                                            context,
+                                            "Unable to install notification",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 16.dp)
                 ) {
                     Text("Install")
                 }
@@ -793,4 +858,162 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+    private suspend fun installNotification(
+        context: Context,
+        notification: Notification
+    ): Boolean {
+        return try {
+            val audioUrl =
+                "https://www.hilton-chiropractor.co.za/nZ3PrYY7/php-admin/uploads/notifications/${notification.filename}"
+
+            val contentResolver = context.contentResolver
+
+            // Keep the original file extension
+            val extension = notification.filename.substringAfterLast(
+                '.',
+                "wav"
+            ).lowercase()
+
+            val mimeType = when (extension) {
+                "mp3" -> "audio/mpeg"
+                "wav" -> "audio/wav"
+                else -> "audio/wav"
+            }
+
+            // Check if already exists to avoid duplicates
+            val userFriendlyName = "${notification.name}.$extension"
+            val projection = arrayOf(MediaStore.Audio.Media._ID)
+            val selection = "${MediaStore.Audio.Media.DISPLAY_NAME} = ?"
+            val selectionArgs = arrayOf(userFriendlyName)
+            val queryUri = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
+
+            var notificationUri: Uri? = null
+
+            contentResolver.query(
+                queryUri,
+                projection,
+                selection,
+                selectionArgs,
+                null
+            )?.use { cursor ->
+                if (cursor.moveToFirst()) {
+                    val id = cursor.getLong(
+                        cursor.getColumnIndexOrThrow(
+                            MediaStore.Audio.Media._ID
+                        )
+                    )
+
+                    notificationUri = Uri.withAppendedPath(
+                        queryUri,
+                        id.toString()
+                    )
+                }
+            }
+
+            if (notificationUri == null) {
+                val values = ContentValues().apply {
+                    put(
+                        MediaStore.Audio.Media.DISPLAY_NAME,
+                        userFriendlyName
+                    )
+                    put(
+                        MediaStore.Audio.Media.TITLE,
+                        notification.name
+                    )
+                    put(
+                        MediaStore.Audio.Media.MIME_TYPE,
+                        mimeType
+                    )
+                    put(
+                        MediaStore.Audio.Media.IS_RINGTONE,
+                        false
+                    )
+                    put(
+                        MediaStore.Audio.Media.IS_NOTIFICATION,
+                        true
+                    )
+                    put(
+                        MediaStore.Audio.Media.IS_ALARM,
+                        false
+                    )
+                    put(
+                        MediaStore.Audio.Media.IS_MUSIC,
+                        false
+                    )
+
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        put(
+                            MediaStore.Audio.Media.RELATIVE_PATH,
+                            Environment.DIRECTORY_NOTIFICATIONS
+                        )
+                        put(
+                            MediaStore.Audio.Media.IS_PENDING,
+                            1
+                        )
+                    }
+                }
+
+                val newUri = contentResolver.insert(
+                    queryUri,
+                    values
+                ) ?: return false
+
+                val connection =
+                    URL(audioUrl).openConnection() as HttpURLConnection
+
+                connection.connect()
+
+                if (connection.responseCode == HttpURLConnection.HTTP_OK) {
+                    contentResolver.openOutputStream(newUri)?.use { os ->
+                        connection.inputStream.use { input ->
+                            input.copyTo(os)
+                        }
+                    }
+
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        values.clear()
+                        values.put(
+                            MediaStore.Audio.Media.IS_PENDING,
+                            0
+                        )
+
+                        contentResolver.update(
+                            newUri,
+                            values,
+                            null,
+                            null
+                        )
+                    }
+
+                    notificationUri = newUri
+                } else {
+                    contentResolver.delete(
+                        newUri,
+                        null,
+                        null
+                    )
+                    return false
+                }
+            }
+
+            if (notificationUri != null) {
+                RingtoneManager.setActualDefaultRingtoneUri(
+                    context,
+                    RingtoneManager.TYPE_NOTIFICATION,
+                    notificationUri
+                )
+
+                true
+            } else {
+                false
+            }
+
+        } catch (e: Exception) {
+            e.printStackTrace()
+            false
+        }
+    }
+
+
+
 }
