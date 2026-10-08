@@ -545,9 +545,10 @@ class MainActivity : ComponentActivity() {
             val contentResolver = context.contentResolver
             
             // Check if already exists to avoid duplicates
+            val userFriendlyName = "${ringtone.name}.mp3"
             val projection = arrayOf(MediaStore.Audio.Media._ID)
             val selection = "${MediaStore.Audio.Media.DISPLAY_NAME} = ?"
-            val selectionArgs = arrayOf<String>(ringtone.filename)
+            val selectionArgs = arrayOf<String>(userFriendlyName)
             val queryUri = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
             
             var ringtoneUri: Uri? = null
@@ -561,7 +562,7 @@ class MainActivity : ComponentActivity() {
             
             if (ringtoneUri == null) {
                 val values = ContentValues().apply {
-                    put(MediaStore.Audio.Media.DISPLAY_NAME, ringtone.filename)
+                    put(MediaStore.Audio.Media.DISPLAY_NAME, userFriendlyName)
                     put(MediaStore.Audio.Media.TITLE, ringtone.name)
                     put(MediaStore.Audio.Media.MIME_TYPE, "audio/mpeg")
                     put(MediaStore.Audio.Media.IS_RINGTONE, true)
