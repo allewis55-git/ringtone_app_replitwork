@@ -804,6 +804,104 @@ class MainActivity : ComponentActivity() {
 
                 Spacer(modifier = Modifier.weight(1f))
 
+
+                OutlinedButton(
+                    onClick = {
+                        selectedNotification?.let { notification ->
+                            if (!Settings.System.canWrite(context)) {
+                                val intent = Intent(
+                                    Settings.ACTION_MANAGE_WRITE_SETTINGS
+                                ).apply {
+                                    data = Uri.parse("package:${context.packageName}")
+                                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                }
+
+                                context.startActivity(intent)
+
+                                Toast.makeText(
+                                    context,
+                                    "Please allow 'Modify system settings' and try again",
+                                    Toast.LENGTH_LONG
+                                ).show()
+                            } else {
+                                scope.launch {
+                                    val success = withContext(Dispatchers.IO) {
+                                        installNotification(context, notification)
+                                    }
+
+                                    if (success) {
+                                        Toast.makeText(
+                                            context,
+                                            "✓ Notification installed",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                    } else {
+                                        Toast.makeText(
+                                            context,
+                                            "Unable to install notification",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    modifier = Modifier
+                        .width(280.dp)
+                        .heightIn(min = 68.dp)
+                        .padding(bottom = 16.dp)
+                        .shadow(
+                            elevation = 3.dp,
+                            shape = RoundedCornerShape(20.dp),
+                            ambientColor = Color(0xFFFFB9A3),
+                            spotColor = Color(0xFFFFB9A3)
+                        ),
+                    enabled = selectedNotification != null,
+                    border = BorderStroke(
+                        width = 1.dp,
+                        color = Color(0xFFFF8559)
+                    ),
+                    shape = RoundedCornerShape(20.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        containerColor = Color(0xFFFFE5DC),
+                        disabledContainerColor = Color(0xFFFFE5DC).copy(alpha = 0.5f),
+                        contentColor = Color(0xFF4E4E6B)
+                    )
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        if (selectedNotification != null) {
+                            Text(
+                                text = "Install",
+                                fontSize = 16.sp,
+                                color = Color(0xFFCF3700),
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 1.sp
+                            )
+
+                            Text(
+                                text = selectedNotification!!.name,
+                                fontSize = 18.sp,
+                                color = Color(0xFF4E4E6B),
+                                textAlign = TextAlign.Center,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        } else {
+                            Text(
+                                text = "Select a notification",
+                                fontSize = 18.sp,
+                                color = Color(0xFFCF3700).copy(alpha = 0.6f),
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+
+
+                /*
                 Button(
                     onClick = {
                         selectedNotification?.let { notification ->
@@ -851,6 +949,8 @@ class MainActivity : ComponentActivity() {
                 ) {
                     Text("Install")
                 }
+           */
+
             }
 
             TextButton(onClick = onBackToStyles) {
