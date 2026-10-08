@@ -57,12 +57,16 @@ import androidx.compose.ui.text.style.TextOverflow
 class MainActivity : ComponentActivity() {
 
     data class Ringtone(val name: String, val filename: String)
+    data class Notification(val name: String, val filename: String)
 
     private val stylesUrl =
         "https://www.hilton-chiropractor.co.za/nZ3PrYY7/php-admin/api/styles_request.php"
 
     private val ringtonesUrl =
         "https://www.hilton-chiropractor.co.za/nZ3PrYY7/php-admin/api/ringtones_request.php"
+
+    private val notificationsUrl =
+        "https://www.hilton-chiropractor.co.za/nZ3PrYY7/php-admin/api/notifications_request.php"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -125,6 +129,39 @@ class MainActivity : ComponentActivity() {
             List(ringtonesJson.length()) { index ->
                 val item = ringtonesJson.getJSONObject(index)
                 Ringtone(
+                    name = item.getString("name"),
+                    filename = item.getString("filename")
+                )
+            }
+
+        } catch (e: Exception) {
+            e.printStackTrace()
+            emptyList()
+        }
+    }
+
+    private fun loadNotifications(style: String): List<Notification> {
+        return try {
+            val encodedStyle = URLEncoder.encode(style, "UTF-8")
+            val urlWithParams = "$notificationsUrl?style=$encodedStyle"
+            val connection = URL(urlWithParams).openConnection() as HttpURLConnection
+
+            connection.requestMethod = "GET"
+            connection.connectTimeout = 10_000
+            connection.readTimeout = 10_000
+
+            val response = connection.inputStream
+                .bufferedReader()
+                .use { it.readText() }
+
+            connection.disconnect()
+
+            val json = JSONObject(response)
+            val notificationsJson = json.getJSONArray("notifications")
+
+            List(notificationsJson.length()) { index ->
+                val item = notificationsJson.getJSONObject(index)
+                Notification(
                     name = item.getString("name"),
                     filename = item.getString("filename")
                 )
@@ -616,6 +653,30 @@ class MainActivity : ComponentActivity() {
 
     @Composable
     fun NotificationsScreen(selectedStyle: String, onBackToStyles: () -> Unit) {
+        val context = LocalContext.current
+        var notifications by remember { mutableStateOf<List<Notification>?>(null) }
+        var selectedNotification by remember { mutableStateOf<Notification?>(null) }
+        var mediaPlayer by remember { mutableStateOf<MediaPlayer?>(null) }
+
+        var expanded by remember { mutableStateOf(true) }
+
+        // Cleanup MediaPlayer when leaving composition
+        DisposableEffect(Unit) {
+            onDispose {
+                mediaPlayer?.stop()
+                mediaPlayer?.release()
+                mediaPlayer = null
+            }
+        }
+
+        LaunchedEffect(selectedStyle) {
+            if (selectedStyle.isNotEmpty()) {
+                notifications = withContext(Dispatchers.IO) {
+                    loadNotifications(selectedStyle)
+                }
+            }
+        }
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -637,21 +698,80 @@ class MainActivity : ComponentActivity() {
             } else {
                 Text("Selected Style: $selectedStyle")
 
-                // Placeholder for Notification Selector
-                Surface(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f)
-                        .padding(vertical = 16.dp),
-                    color = MaterialTheme.colorScheme.surfaceVariant
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
-                    ) {
-                        Text("Notification list placeholder")
+                Spacer(modifier = Modifier.height(16.dp))
+
+                when {
+                    notifications == null -> {
+                        CircularProgressIndicator()
+                        Text("Loading notifications...", modifier = Modifier.padding(top = 16.dp))
+                    }
+                    notifications!!.isEmpty() -> {
+                        Text("No notifications found for this style.")
+                    }
+                    else -> {
+                        if (expanded) {
+                            Popup(
+                                alignment = Alignment.TopCenter,
+                                onDismissRequest = { expanded = false }
+                            ) {
+                                Surface(
+                                    modifier = Modifier
+                                        .padding(top = 95.dp)
+                                        .width(280.dp)
+                                        .heightIn(max = 400.dp),
+                                    color = Color(0xFFF4F4F7),
+                                    tonalElevation = 4.dp,
+                                    shadowElevation = 4.dp
+                                ) {
+                                    LazyColumn {
+                                        items(notifications!!) { notification ->
+                                            DropdownMenuItem(
+                                                text = { Text(notification.name) },
+                                                onClick = {
+                                                    selectedNotification = notification
+                                                    // expanded = false // Keep open as requested
+
+                                                    // Handle Playback
+                                                    try {
+                                                        mediaPlayer?.stop()
+                                                        mediaPlayer?.release()
+                                                        mediaPlayer = null
+
+                                                        val audioUrl = "https://www.hilton-chiropractor.co.za/nZ3PrYY7/php-admin/uploads/notifications/${notification.filename}"
+                                                        mediaPlayer = MediaPlayer().apply {
+                                                            setDataSource(audioUrl)
+                                                            setOnPreparedListener { start() }
+                                                            setOnCompletionListener {
+                                                                it.release()
+                                                                if (mediaPlayer == it) mediaPlayer = null
+                                                            }
+                                                            setOnErrorListener { mp, _, _ ->
+                                                                Toast.makeText(context, "Unable to play notification", Toast.LENGTH_SHORT).show()
+                                                                mp.release()
+                                                                if (mediaPlayer == mp) mediaPlayer = null
+                                                                true
+                                                            }
+                                                            prepareAsync()
+                                                        }
+                                                    } catch (e: Exception) {
+                                                        e.printStackTrace()
+                                                        Toast.makeText(context, "Unable to play notification", Toast.LENGTH_SHORT).show()
+                                                    }
+                                                }
+                                            )
+                                            HorizontalDivider(
+                                                color = Color(0xFFD8D8DE),
+                                                thickness = 1.dp
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
+
+                Spacer(modifier = Modifier.weight(1f))
 
                 Button(
                     onClick = { /* TODO: Play */ },
