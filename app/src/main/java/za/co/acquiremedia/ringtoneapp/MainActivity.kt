@@ -1,8 +1,17 @@
 package za.co.acquiremedia.ringtoneapp
 
 
+import android.content.ContentValues
+import android.content.Context
+import android.content.Intent
 import android.media.MediaPlayer
+import android.media.RingtoneManager
+import android.net.Uri
+import android.os.Build
 import android.os.Bundle
+import android.os.Environment
+import android.provider.MediaStore
+import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -28,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Popup
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.net.HttpURLConnection
@@ -318,6 +328,7 @@ class MainActivity : ComponentActivity() {
     @Composable
     fun RingtonesScreen(selectedStyle: String, onBackToStyles: () -> Unit) {
         val context = LocalContext.current
+        val scope = rememberCoroutineScope()
         var ringtones by remember { mutableStateOf<List<Ringtone>?>(null) }
         var selectedRingtone by remember { mutableStateOf<Ringtone?>(null) }
         var mediaPlayer by remember { mutableStateOf<MediaPlayer?>(null) }
@@ -445,7 +456,29 @@ class MainActivity : ComponentActivity() {
                 Spacer(modifier = Modifier.weight(1f))
 
                 OutlinedButton(
-                    onClick = { /* TODO: Install */ },
+                    onClick = {
+                        selectedRingtone?.let { ringtone ->
+                            if (!Settings.System.canWrite(context)) {
+                                val intent = Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS).apply {
+                                    data = Uri.parse("package:${context.packageName}")
+                                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                }
+                                context.startActivity(intent)
+                                Toast.makeText(context, "Please allow 'Modify system settings' and try again", Toast.LENGTH_LONG).show()
+                            } else {
+                                scope.launch {
+                                    val success = withContext(Dispatchers.IO) {
+                                        installRingtone(context, ringtone)
+                                    }
+                                    if (success) {
+                                        Toast.makeText(context, "✓ Ringtone installed", Toast.LENGTH_SHORT).show()
+                                    } else {
+                                        Toast.makeText(context, "Unable to install ringtone", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                            }
+                        }
+                    },
                     modifier = Modifier
                         .width(280.dp)
                         .heightIn(min = 68.dp)
@@ -503,6 +536,80 @@ class MainActivity : ComponentActivity() {
             TextButton(onClick = onBackToStyles) {
                 Text("← Styles")
             }
+        }
+    }
+
+    private suspend fun installRingtone(context: Context, ringtone: Ringtone): Boolean {
+        return try {
+            val audioUrl = "https://www.hilton-chiropractor.co.za/nZ3PrYY7/php-admin/uploads/ringtones/${ringtone.filename}"
+            val contentResolver = context.contentResolver
+            
+            // Check if already exists to avoid duplicates
+            val projection = arrayOf(MediaStore.Audio.Media._ID)
+            val selection = "${MediaStore.Audio.Media.DISPLAY_NAME} = ?"
+            val selectionArgs = arrayOf<String>(ringtone.filename)
+            val queryUri = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
+            
+            var ringtoneUri: Uri? = null
+            
+            contentResolver.query(queryUri, projection, selection, selectionArgs, null)?.use { cursor ->
+                if (cursor.moveToFirst()) {
+                    val id = cursor.getLong(cursor.getColumnIndexOrThrow(MediaStore.Audio.Media._ID))
+                    ringtoneUri = Uri.withAppendedPath(queryUri, id.toString())
+                }
+            }
+            
+            if (ringtoneUri == null) {
+                val values = ContentValues().apply {
+                    put(MediaStore.Audio.Media.DISPLAY_NAME, ringtone.filename)
+                    put(MediaStore.Audio.Media.TITLE, ringtone.name)
+                    put(MediaStore.Audio.Media.MIME_TYPE, "audio/mpeg")
+                    put(MediaStore.Audio.Media.IS_RINGTONE, true)
+                    put(MediaStore.Audio.Media.IS_NOTIFICATION, false)
+                    put(MediaStore.Audio.Media.IS_ALARM, false)
+                    put(MediaStore.Audio.Media.IS_MUSIC, false)
+                    
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        put(MediaStore.Audio.Media.RELATIVE_PATH, Environment.DIRECTORY_RINGTONES)
+                        put(MediaStore.Audio.Media.IS_PENDING, 1)
+                    }
+                }
+                
+                val newUri = contentResolver.insert(queryUri, values) ?: return false
+                
+                val connection = URL(audioUrl).openConnection() as HttpURLConnection
+                connection.connect()
+                
+                if (connection.responseCode == HttpURLConnection.HTTP_OK) {
+                    contentResolver.openOutputStream(newUri)?.use { os ->
+                        connection.inputStream.use { it.copyTo(os) }
+                    }
+                    
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        values.clear()
+                        values.put(MediaStore.Audio.Media.IS_PENDING, 0)
+                        contentResolver.update(newUri, values, null, null)
+                    }
+                    ringtoneUri = newUri
+                } else {
+                    contentResolver.delete(newUri, null, null)
+                    return false
+                }
+            }
+            
+            if (ringtoneUri != null) {
+                RingtoneManager.setActualDefaultRingtoneUri(
+                    context,
+                    RingtoneManager.TYPE_RINGTONE,
+                    ringtoneUri
+                )
+                true
+            } else {
+                false
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            false
         }
     }
 
