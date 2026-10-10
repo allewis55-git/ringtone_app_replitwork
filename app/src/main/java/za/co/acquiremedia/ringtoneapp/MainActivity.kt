@@ -596,7 +596,7 @@ class MainActivity : ComponentActivity() {
                     ringtoneUri = Uri.withAppendedPath(queryUri, id.toString())
                 }
             }
-            
+
             if (ringtoneUri == null) {
                 val values = ContentValues().apply {
                     put(MediaStore.Audio.Media.DISPLAY_NAME, userFriendlyName)
@@ -612,7 +612,7 @@ class MainActivity : ComponentActivity() {
                         put(MediaStore.Audio.Media.IS_PENDING, 1)
                     }
                 }
-                
+
                 val newUri = contentResolver.insert(queryUri, values) ?: return false
                 
                 val connection = URL(audioUrl).openConnection() as HttpURLConnection
@@ -634,7 +634,7 @@ class MainActivity : ComponentActivity() {
                     return false
                 }
             }
-            
+
             if (ringtoneUri != null) {
                 RingtoneManager.setActualDefaultRingtoneUri(
                     context,
