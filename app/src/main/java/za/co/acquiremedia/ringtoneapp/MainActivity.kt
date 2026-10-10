@@ -60,13 +60,13 @@ class MainActivity : ComponentActivity() {
     data class Notification(val name: String, val filename: String)
 
     private val stylesUrl =
-        "https://www.hilton-chiropractor.co.za/nZ3PrYY7/php-admin/api/styles_request.php"
+        "https://php-admin/api/styles_request.php"
 
     private val ringtonesUrl =
-        "https://www.hilton-chiropractor.co.za/nZ3PrYY7/php-admin/api/ringtones_request.php"
+        "https://php-admin/api/ringtones_request.php"
 
     private val notificationsUrl =
-        "https://www.hilton-chiropractor.co.za/nZ3PrYY7/php-admin/api/notifications_request.php"
+        "https://php-admin/api/notifications_request.php"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -456,7 +456,7 @@ class MainActivity : ComponentActivity() {
                                                         mediaPlayer?.release()
                                                         mediaPlayer = null
 
-                                                        val audioUrl = "https://www.hilton-chiropractor.co.za/nZ3PrYY7/php-admin/uploads/ringtones/${ringtone.filename}"
+                                                        val audioUrl = "https://php-admin/uploads/ringtones/${ringtone.filename}"
                                                         mediaPlayer = MediaPlayer().apply {
                                                             setDataSource(audioUrl)
                                                             setOnPreparedListener { start() }
@@ -578,7 +578,7 @@ class MainActivity : ComponentActivity() {
 
     private suspend fun installRingtone(context: Context, ringtone: Ringtone): Boolean {
         return try {
-            val audioUrl = "https://www.hilton-chiropractor.co.za/nZ3PrYY7/php-admin/uploads/ringtones/${ringtone.filename}"
+            val audioUrl = "https://php-admin/uploads/ringtones/${ringtone.filename}"
             val contentResolver = context.contentResolver
             
             // Check if already exists to avoid duplicates
@@ -744,7 +744,7 @@ class MainActivity : ComponentActivity() {
                                                         mediaPlayer = null
 
                                                         val audioUrl =
-                                                            "https://www.hilton-chiropractor.co.za/nZ3PrYY7/php-admin/uploads/notifications/${notification.filename}"
+                                                            "https://php-admin/uploads/notifications/${notification.filename}"
 
                                                         mediaPlayer = MediaPlayer().apply {
                                                             setDataSource(audioUrl)
@@ -964,7 +964,7 @@ class MainActivity : ComponentActivity() {
     ): Boolean {
         return try {
             val audioUrl =
-                "https://www.hilton-chiropractor.co.za/nZ3PrYY7/php-admin/uploads/notifications/${notification.filename}"
+                "https://php-admin/uploads/notifications/${notification.filename}"
 
             val contentResolver = context.contentResolver
 
